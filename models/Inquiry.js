@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const inquirySchema = new mongoose.Schema(
   {
     brandName: { type: String, required: true },
-    brandWebsite: { type: String, required: true },
+    brandWebsite: { type: String, default: '' },
     contactName: { type: String, required: true },
     contactDesignation: { type: String, required: true },
     contactEmail: { type: String, required: true },
