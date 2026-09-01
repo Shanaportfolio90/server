@@ -51,6 +51,35 @@ router.post('/upload', verifyAdmin, async (req, res) => {
   }
 });
 
+// Cloudinary Stream Upload API for Jodit Editor
+router.post('/upload-jodit', verifyAdmin, (req, res) => {
+  const data = [];
+  req.on('data', (chunk) => data.push(chunk));
+  req.on('end', async () => {
+    const buffer = Buffer.concat(data);
+    try {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: 'snaha_portfolio_media' },
+        (error, result) => {
+          if (error || !result) {
+            console.error('Cloudinary stream upload error:', error);
+            return res.status(500).json({ success: false, error: 'Cloudinary upload failed' });
+          }
+          return res.status(200).json({
+            success: true,
+            files: [result.secure_url],
+            url: result.secure_url,
+          });
+        }
+      );
+      uploadStream.end(buffer);
+    } catch (err) {
+      console.error('Upload stream error:', err);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  });
+});
+
 // Add New Media / Video Content Card
 router.post('/media', verifyAdmin, async (req, res) => {
   try {

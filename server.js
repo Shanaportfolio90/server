@@ -8,6 +8,9 @@ import mediaRoutes from './routes/mediaRoutes.js';
 import inquiryRoutes from './routes/inquiryRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
 import collabRoutes from './routes/collabRoutes.js';
+import blogRoutes from './routes/blogRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import adRoutes from './routes/adRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 
 dotenv.config();
@@ -39,6 +42,11 @@ app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/collabs', collabRoutes);
 app.use('/api/admin/collabs', collabRoutes);
+app.use('/api/blogs', blogRoutes);
+app.use('/api/admin/blogs', blogRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/admin/categories', categoryRoutes);
+app.use('/api', adRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Root Route
