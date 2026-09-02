@@ -45,6 +45,15 @@ const blogSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    heroPosition: {
+      type: String,
+      enum: ['normal', 'main_hero', 'mini_1', 'mini_2', 'mini_3', 'spotlight'],
+      default: 'normal',
+    },
+    videoUrl: {
+      type: String,
+      default: '',
+    },
   },
   { timestamps: true }
 );

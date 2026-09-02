@@ -50,10 +50,17 @@ router.get('/:id', async (req, res) => {
 // POST /api/admin/blogs - Create a new dynamic blog post (Admin protected)
 router.post('/', verifyAdmin, async (req, res) => {
   try {
-    const { title, category, summary, content, coverImage, author, date, readTime, isFeatured } = req.body;
+    const { title, category, summary, content, coverImage, author, date, readTime, isFeatured, heroPosition, videoUrl } = req.body;
 
     if (!title || !category || !content || !coverImage) {
       return res.status(400).json({ message: 'Title, category, cover image, and content are required.' });
+    }
+
+    const position = heroPosition || 'normal';
+
+    // If position is a featured slot (not normal), clear it from previous posts to prevent duplicate assignments
+    if (position !== 'normal') {
+      await Blog.updateMany({ heroPosition: position }, { heroPosition: 'normal' });
     }
 
     const generatedSlug = `${slugify(title)}-${Date.now().toString().slice(-4)}`;
@@ -70,6 +77,8 @@ router.post('/', verifyAdmin, async (req, res) => {
       date: formattedDate,
       readTime: readTime || '4 min read',
       isFeatured: !!isFeatured,
+      heroPosition: position,
+      videoUrl: videoUrl || '',
     });
 
     await newBlog.save();
@@ -83,10 +92,17 @@ router.post('/', verifyAdmin, async (req, res) => {
 // PUT /api/admin/blogs/:id - Update existing blog post (Admin protected)
 router.put('/:id', verifyAdmin, async (req, res) => {
   try {
-    const { title, category, summary, content, coverImage, author, date, readTime, isFeatured } = req.body;
+    const { title, category, summary, content, coverImage, author, date, readTime, isFeatured, heroPosition, videoUrl } = req.body;
 
     if (!title || !category || !content || !coverImage) {
       return res.status(400).json({ message: 'Title, category, cover image, and content are required.' });
+    }
+
+    const position = heroPosition || 'normal';
+
+    // If position is a featured slot (not normal), clear it from other posts
+    if (position !== 'normal') {
+      await Blog.updateMany({ _id: { $ne: req.params.id }, heroPosition: position }, { heroPosition: 'normal' });
     }
 
     const updatedBlog = await Blog.findByIdAndUpdate(
@@ -101,6 +117,8 @@ router.put('/:id', verifyAdmin, async (req, res) => {
         date: date || new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }),
         readTime: readTime || '4 min read',
         isFeatured: !!isFeatured,
+        heroPosition: position,
+        videoUrl: videoUrl || '',
       },
       { new: true }
     );

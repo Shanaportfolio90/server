@@ -1,6 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import { v2 as cloudinary } from 'cloudinary';
+import multer from 'multer';
 import { verifyAdmin } from '../middlewares/authMiddleware.js';
 import MediaContent from '../models/MediaContent.js';
 import Inquiry from '../models/Inquiry.js';
@@ -8,6 +9,9 @@ import Contact from '../models/Contact.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'Snaha_Secret_Key_2026';
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // Admin Login Route
 router.post('/login', (req, res) => {
@@ -51,33 +55,69 @@ router.post('/upload', verifyAdmin, async (req, res) => {
   }
 });
 
-// Cloudinary Stream Upload API for Jodit Editor
-router.post('/upload-jodit', verifyAdmin, (req, res) => {
-  const data = [];
-  req.on('data', (chunk) => data.push(chunk));
-  req.on('end', async () => {
-    const buffer = Buffer.concat(data);
-    try {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: 'snaha_portfolio_media' },
-        (error, result) => {
-          if (error || !result) {
-            console.error('Cloudinary stream upload error:', error);
-            return res.status(500).json({ success: false, error: 'Cloudinary upload failed' });
-          }
-          return res.status(200).json({
-            success: true,
-            files: [result.secure_url],
-            url: result.secure_url,
-          });
-        }
-      );
-      uploadStream.end(buffer);
-    } catch (err) {
-      console.error('Upload stream error:', err);
-      res.status(500).json({ success: false, error: 'Server error' });
+// Cloudinary Stream Upload API for Direct Video Files (< 100MB)
+router.post('/upload-video', verifyAdmin, upload.any(), async (req, res) => {
+  try {
+    const files = req.files || [];
+    if (files.length === 0) {
+      return res.status(400).json({ message: 'No video file provided' });
     }
-  });
+    const file = files[0];
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'snaha_portfolio_videos',
+        resource_type: 'video',
+      },
+      (error, result) => {
+        if (error) {
+          console.error('Cloudinary Video Upload Error:', error);
+          return res.status(500).json({ message: error.message || 'Video upload failed' });
+        }
+        res.status(200).json({ url: result.secure_url });
+      }
+    );
+    uploadStream.end(file.buffer);
+  } catch (error) {
+    console.error('Video upload endpoint error:', error);
+    res.status(500).json({ message: 'Server error during video upload' });
+  }
+});
+
+// Cloudinary Stream Upload API for Jodit Editor
+router.post('/upload-jodit', verifyAdmin, upload.any(), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, error: 'No files uploaded' });
+    }
+
+    const uploadPromises = req.files.map((file) => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: 'snaha_portfolio_media' },
+          (error, result) => {
+            if (error || !result) {
+              console.error('Cloudinary stream upload error:', error);
+              return reject(error);
+            }
+            resolve(result.secure_url);
+          }
+        );
+        stream.end(file.buffer);
+      });
+    });
+
+    const uploadedUrls = await Promise.all(uploadPromises);
+
+    return res.status(200).json({
+      success: true,
+      files: uploadedUrls,
+      isSuccess: true,
+      url: uploadedUrls[0],
+    });
+  } catch (error) {
+    console.error('Cloudinary upload-jodit error:', error);
+    res.status(500).json({ success: false, error: 'Failed to upload image to Cloudinary.' });
+  }
 });
 
 // Add New Media / Video Content Card
